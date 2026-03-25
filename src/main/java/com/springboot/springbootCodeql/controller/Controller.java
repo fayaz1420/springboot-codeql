@@ -5,50 +5,60 @@ import com.springboot.springbootCodeql.service.EmployeeService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.URI;
+import java.io.IOException;
 import java.util.List;
 
 @RestController
-@RequestMapping("/employees")
+@RequestMapping("/api/employees")
 public class Controller {
 
-    private final EmployeeService service;
+    private final EmployeeService employeeService;
 
-    public Controller(EmployeeService service) {
-        this.service = service;
+    public Controller(EmployeeService employeeService) {
+        this.employeeService = employeeService;
     }
 
     @GetMapping
     public List<Employee> list() {
-        return service.list();
-    }
-
-    @PostMapping
-    public ResponseEntity<Employee> create(@RequestBody Employee employee) {
-        Employee created = service.create(employee);
-        return ResponseEntity.created(URI.create("/employees/" + created.getId())).body(created);
+        return employeeService.list();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Employee> get(@PathVariable Long id) {
-        return ResponseEntity.ok(service.get(id));
+    public Employee get(@PathVariable Long id) {
+        return employeeService.get(id);
+    }
+
+    @PostMapping
+    public Employee create(@RequestBody Employee employee) {
+        return employeeService.create(employee);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Employee> update(@PathVariable Long id, @RequestBody Employee employee) {
-        Employee updated = service.update(id, employee);
-        return ResponseEntity.ok(updated);
+    public Employee update(@PathVariable Long id, @RequestBody Employee employee) {
+        return employeeService.update(id, employee);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        service.delete(id);
+        employeeService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
-    // VULNERABLE: Passes user input directly to SQL-injectable method
+    // VULNERABLE 1: SQL Injection - user input goes straight into raw SQL
     @GetMapping("/search")
     public List<Employee> search(@RequestParam String name) {
-        return service.searchByName(name);
+        return employeeService.searchByName(name);
+    }
+
+    // VULNERABLE 2: Command Injection - user input goes straight into OS command
+    @GetMapping("/ping")
+    public String ping(@RequestParam String host) throws IOException {
+        return employeeService.runSystemCommand(host);
+    }
+
+    // VULNERABLE 3: Path Traversal - user input used directly in file path
+    @GetMapping("/file")
+    public String readFile(@RequestParam String filename) throws IOException {
+        return employeeService.readFile(filename);
     }
 }
