@@ -2,6 +2,8 @@ package com.springboot.springbootCodeql.service;
 
 import com.springboot.springbootCodeql.model.Employee;
 import com.springboot.springbootCodeql.repository.EmployeeRepository;
+import jakarta.persistence.EntityManager;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +15,9 @@ import java.util.NoSuchElementException;
 public class EmployeeService {
 
     private final EmployeeRepository repository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     public EmployeeService(EmployeeRepository repository) {
         this.repository = repository;
@@ -40,5 +45,12 @@ public class EmployeeService {
 
     public void delete(Long id) {
         repository.deleteById(id);
+    }
+
+    // VULNERABLE: SQL Injection - for CodeQL testing only
+    @SuppressWarnings("unchecked")
+    public List<Employee> searchByName(String name) {
+        String query = "SELECT * FROM employees WHERE first_name = '" + name + "'";
+        return entityManager.createNativeQuery(query, Employee.class).getResultList();
     }
 }
