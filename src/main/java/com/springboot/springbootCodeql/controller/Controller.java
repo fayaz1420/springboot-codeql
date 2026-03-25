@@ -46,4 +46,9 @@ public class Controller {
         return ResponseEntity.noContent().build();
     }
 
+    // VULNERABLE: Passes user input directly to SQL-injectable method
+    @GetMapping("/search")
+    public List<Employee> search(@RequestParam String name) {
+        return service.searchByName(name);
+    }
 }
