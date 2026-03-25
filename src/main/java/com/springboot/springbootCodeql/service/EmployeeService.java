@@ -49,28 +49,28 @@ public class EmployeeService {
         repository.deleteById(id);
     }
 
-//    // VULNERABLE 1: SQL Injection
-//    @SuppressWarnings("unchecked")
-//    public List<Employee> searchByName(String name) {
-//        String query = "SELECT * FROM employees WHERE first_name = '" + name + "'";
-//        return entityManager.createNativeQuery(query, Employee.class).getResultList();
-//    }
-//
-//    // VULNERABLE 2: Command Injection
-//    public String runSystemCommand(String userInput) throws IOException {
-//        Process process = Runtime.getRuntime().exec("ping -c 1 " + userInput);
-//        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-//        StringBuilder output = new StringBuilder();
-//        String line;
-//        while ((line = reader.readLine()) != null) {
-//            output.append(line).append("\n");
-//        }
-//        return output.toString();
-//    }
-//
-//    // VULNERABLE 3: Path Traversal
-//    public String readFile(String filename) throws IOException {
-//        Path path = Paths.get("/uploads/" + filename);
-//        return new String(Files.readAllBytes(path));
-//    }
+    // VULNERABLE 1: SQL Injection
+    @SuppressWarnings("unchecked")
+    public List<Employee> searchByName(String name) {
+        String query = "SELECT * FROM employees WHERE first_name = '" + name + "'";
+        return entityManager.createNativeQuery(query, Employee.class).getResultList();
+    }
+
+    // VULNERABLE 2: Command Injection
+    public String runSystemCommand(String userInput) throws IOException {
+        Process process = Runtime.getRuntime().exec("ping -c 1 " + userInput);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+        StringBuilder output = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            output.append(line).append("\n");
+        }
+        return output.toString();
+    }
+
+    // VULNERABLE 3: Path Traversal
+    public String readFile(String filename) throws IOException {
+        Path path = Paths.get("/uploads/" + filename);
+        return new String(Files.readAllBytes(path));
+    }
 }
