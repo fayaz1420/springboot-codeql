@@ -37,7 +37,7 @@ public class Controller {
     @PutMapping("/{id}")
     public ResponseEntity<Employee> update(@PathVariable Long id, @RequestBody Employee employee) {
         Employee updated = service.update(id, employee);
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(updated); 
     }
 
     @DeleteMapping("/{id}")
