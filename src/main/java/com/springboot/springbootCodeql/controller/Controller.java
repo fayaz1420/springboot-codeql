@@ -61,4 +61,10 @@ public class Controller {
     public String readFile(@RequestParam String filename) throws IOException {
         return employeeService.readFile(filename);
     }
+
+    // VULNERABLE 4: SSRF - user controls the URL the server requests
+    @GetMapping("/fetch")
+    public String fetch(@RequestParam String url) {
+        return employeeService.fetchUrl(url);
+    }
 }

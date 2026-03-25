@@ -6,6 +6,7 @@ import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.*;
 import java.nio.file.*;
@@ -72,5 +73,11 @@ public class EmployeeService {
     public String readFile(String filename) throws IOException {
         Path path = Paths.get("/uploads/" + filename);
         return new String(Files.readAllBytes(path));
+    }
+
+    // VULNERABLE 4: Server-Side Request Forgery (SSRF)
+    public String fetchUrl(String url) {
+        RestTemplate restTemplate = new RestTemplate();
+        return restTemplate.getForObject(url, String.class);
     }
 }
