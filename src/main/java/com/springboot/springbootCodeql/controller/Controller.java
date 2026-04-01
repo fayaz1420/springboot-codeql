@@ -50,21 +50,21 @@ public class Controller {
         return employeeService.searchByName(name);
     }
 
-//    // VULNERABLE 2: Command Injection - user input goes straight into OS command
-//    @GetMapping("/ping")
-//    public String ping(@RequestParam String host) throws IOException {
-//        return employeeService.runSystemCommand(host);
-//    }
-//
-//    // VULNERABLE 3: Path Traversal - user input used directly in file path
-//    @GetMapping("/file")
-//    public String readFile(@RequestParam String filename) throws IOException {
-//        return employeeService.readFile(filename);
-//    }
-//
-//    // VULNERABLE 4: SSRF - user controls the URL the server requests
-//    @GetMapping("/fetch")
-//    public String fetch(@RequestParam String url) {
-//        return employeeService.fetchUrl(url);
-//    }
+    // VULNERABLE 2: Command Injection - user input goes straight into OS command
+    @GetMapping("/ping")
+    public String ping(@RequestParam String host) throws IOException {
+        return employeeService.runSystemCommand(host);
+    }
+
+    // VULNERABLE 3: Path Traversal - user input used directly in file path
+    @GetMapping("/file")
+    public String readFile(@RequestParam String filename) throws IOException {
+        return employeeService.readFile(filename);
+    }
+
+    // VULNERABLE 4: SSRF - user controls the URL the server requests
+    @GetMapping("/fetch")
+    public String fetch(@RequestParam String url) {
+        return employeeService.fetchUrl(url);
+    }
 }
