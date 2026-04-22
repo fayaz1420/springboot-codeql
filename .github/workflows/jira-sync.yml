@@ -25,14 +25,14 @@ jobs:
           echo "No Jira ticket found in PR title. Skipping Jira sync."
           exit 0
 
-	  - name: Fetch Jira Ticket
-		run: |
-		  echo "Fetching Jira ticket: ${{ steps.extract.outputs.ticket_id }}"
-		  curl -s -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
-		  -H "Accept: application/json" \
-		  "https://abccompany.atlassian.net/rest/api/3/issue/${{ steps.extract.outputs.ticket_id }}" \
-		  > jira.json
-		  
+      - name: Fetch Jira Ticket
+        run: |
+          echo "Fetching Jira ticket: ${{ steps.extract.outputs.ticket_id }}"
+          curl -s -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
+          -H "Accept: application/json" \
+          "https://abccompany.atlassian.net/rest/api/3/issue/${{ steps.extract.outputs.ticket_id }}" \
+          > jira.json
+          
       - name: Install jq (for JSON parsing)
         run: sudo apt-get update && sudo apt-get install -y jq
 
