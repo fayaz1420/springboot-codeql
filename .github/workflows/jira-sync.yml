@@ -28,13 +28,31 @@ jobs:
       - name: Fetch Jira Ticket
         run: |
           echo "Fetching Jira ticket: ${{ steps.extract.outputs.ticket_id }}"
-          curl -s -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
-          -H "Accept: application/json" \
-          "https://abccompany.atlassian.net/rest/api/3/issue/${{ steps.extract.outputs.ticket_id }}" \
-          > jira.json
-          
+          HTTP_STATUS=$(curl -sS -w "%{http_code}" -o jira.json \
+            -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
+            -H "Accept: application/json" \
+            "https://abccompany.atlassian.net/rest/api/3/issue/${{ steps.extract.outputs.ticket_id }}")
+
+          echo "Jira API HTTP status: ${HTTP_STATUS}"
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "Failed to fetch Jira ticket. HTTP status: ${HTTP_STATUS}"
+            echo "Response body:"
+            cat jira.json || echo "No response body"
+            exit 1
+          fi
+
       - name: Install jq (for JSON parsing)
         run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Validate Jira JSON
+        run: |
+          if ! jq empty jira.json > /dev/null 2>&1; then
+            echo "Downloaded Jira response is not valid JSON or is empty."
+            echo "Response body:"
+            cat jira.json || echo "No response body"
+            exit 1
+          fi
 
       - name: Format Jira Content (Readable)
         run: |
