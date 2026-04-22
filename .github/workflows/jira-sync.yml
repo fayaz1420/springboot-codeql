@@ -1,0 +1,84 @@
+name: Jira Sync for Copilot Review
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  jira-sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Extract Jira Ticket ID
+        id: extract
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          TICKET=$(echo "$TITLE" | grep -oE '[A-Z]+-[0-9]+')
+          echo "ticket_id=$TICKET" >> $GITHUB_OUTPUT
+
+      - name: Stop if no ticket found
+        if: steps.extract.outputs.ticket_id == ''
+        run: |
+          echo "No Jira ticket found in PR title. Skipping Jira sync."
+          exit 0
+
+	  - name: Fetch Jira Ticket
+		run: |
+		  echo "Fetching Jira ticket: ${{ steps.extract.outputs.ticket_id }}"
+		  curl -s -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
+		  -H "Accept: application/json" \
+		  "https://abccompany.atlassian.net/rest/api/3/issue/${{ steps.extract.outputs.ticket_id }}" \
+		  > jira.json
+		  
+      - name: Install jq (for JSON parsing)
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Format Jira Content (Readable)
+        run: |
+          SUMMARY=$(jq -r '.fields.summary' jira.json)
+
+          DESCRIPTION=$(jq -r '
+            if .fields.description.content then
+              .fields.description.content[]
+              | .content[]?
+              | .text // empty
+            else
+              "No description available"
+            end
+          ' jira.json)
+
+          echo "### Jira Ticket Details" > jira.md
+          echo "**Ticket:** ${{ steps.extract.outputs.ticket_id }}" >> jira.md
+          echo "" >> jira.md
+          echo "**Summary:** $SUMMARY" >> jira.md
+          echo "" >> jira.md
+          echo "**Description:**" >> jira.md
+          echo "$DESCRIPTION" >> jira.md
+
+      - name: Update PR Description with Jira Info
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const jiraData = fs.readFileSync('jira.md', 'utf8');
+
+            const body = context.payload.pull_request.body || '';
+            const marker = "### Jira Ticket Details";
+
+            let newBody;
+
+            if (body.includes(marker)) {
+              newBody = body.replace(/### Jira Ticket Details[\s\S]*/m, jiraData);
+            } else {
+              newBody = body + "\n\n" + jiraData;
+            }
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              body: newBody
+            });
