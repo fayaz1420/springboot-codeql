@@ -39,3 +39,15 @@ jobs:
       uses: github/codeql-action/analyze@v3
       with:
         category: "/java-security-and-quality"
+
+    - name: Extract Jira Ticket ID
+      id: extract
+      run: |
+        TITLE="Scrum 1 search api"
+        TICKET=$(echo "$TITLE" | grep -oE '[A-Z]+-[0-9]+')
+        if [ -z "$TICKET" ]; then
+          echo "No ticket ID found in the title."
+          exit 0
+        fi
+        echo "ticket_id=$TICKET" >> $GITHUB_OUTPUT
+      shell: /usr/bin/bash -e {0}
