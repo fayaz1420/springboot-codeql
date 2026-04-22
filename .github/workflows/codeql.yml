@@ -1,53 +1,113 @@
-name: "CodeQL Analysis"
+name: Jira Sync for Copilot Review
 
 on:
   pull_request:
-    branches:
-      - main
-    types: [opened, synchronize, reopened]
+    types: [opened, edited, synchronize]
+
+permissions:
+  pull-requests: write
 
 jobs:
-  codeql-analysis:
-    name: CodeQL Analysis
+  jira-sync:
     runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-      pull-requests: read
-      actions: read
-      contents: read
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Extract Jira Ticket ID
+        id: extract
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
 
-    - name: Set up JDK
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+          # Safe extraction (won't fail if not found)
+          TICKET=$(echo "$TITLE" | grep -oE '[A-Z]+-[0-9]+' || true)
 
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
-      with:
-        languages: java
-        queries: security-and-quality
+          echo "Extracted Ticket: $TICKET"
+          echo "ticket_id=$TICKET" >> $GITHUB_OUTPUT
 
-    - name: Build for CodeQL
-      run: mvn clean compile -DskipTests
-
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
-      with:
-        category: "/java-security-and-quality"
-
-    - name: Extract Jira Ticket ID
-      id: extract
-      run: |
-        TITLE="Scrum 1 search api"
-        TICKET=$(echo "$TITLE" | grep -oE '[A-Z]+-[0-9]+')
-        if [ -z "$TICKET" ]; then
-          echo "No ticket ID found in the title."
+      - name: Stop if no ticket found
+        if: steps.extract.outputs.ticket_id == ''
+        run: |
+          echo "No Jira ticket found in PR title. Use format like SCRUM-1."
           exit 0
-        fi
-        echo "ticket_id=$TICKET" >> $GITHUB_OUTPUT
-      shell: /usr/bin/bash -e {0}
+
+      - name: Debug Jira URL
+        run: |
+          echo "Ticket ID: ${{ steps.extract.outputs.ticket_id }}"
+          echo "Calling: https://YOUR-DOMAIN.atlassian.net/rest/api/3/issue/${{ steps.extract.outputs.ticket_id }}"
+
+      - name: Fetch Jira Ticket
+        run: |
+          echo "Fetching Jira ticket: ${{ steps.extract.outputs.ticket_id }}"
+
+          HTTP_STATUS=$(curl -sS -w "%{http_code}" -o jira.json \
+            -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
+            -H "Accept: application/json" \
+            "https://shaikfayazsk2000.atlassian.net/rest/api/3/issue/${{ steps.extract.outputs.ticket_id }}")
+
+          echo "Jira API HTTP status: ${HTTP_STATUS}"
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo " Failed to fetch Jira ticket"
+            echo "Response body:"
+            cat jira.json || echo "No response body"
+            exit 1
+          fi
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Validate Jira JSON
+        run: |
+          if ! jq empty jira.json > /dev/null 2>&1; then
+            echo " Invalid JSON from Jira"
+            cat jira.json
+            exit 1
+          fi
+
+      - name: Format Jira Content
+        run: |
+          SUMMARY=$(jq -r '.fields.summary // "No summary available"' jira.json)
+
+          DESCRIPTION=$(jq -r '
+            if .fields.description and .fields.description.content then
+              .fields.description.content[]
+              | .content[]?
+              | .text // empty
+            else
+              "No description available"
+            end
+          ' jira.json)
+
+          echo "### Jira Ticket Details" > jira.md
+          echo "**Ticket:** ${{ steps.extract.outputs.ticket_id }}" >> jira.md
+          echo "" >> jira.md
+          echo "**Summary:** $SUMMARY" >> jira.md
+          echo "" >> jira.md
+          echo "**Description:**" >> jira.md
+          echo "$DESCRIPTION" >> jira.md
+
+      - name: Update PR Description
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const jiraData = fs.readFileSync('jira.md', 'utf8');
+
+            const body = context.payload.pull_request.body || '';
+            const marker = "### Jira Ticket Details";
+
+            let newBody;
+
+            if (body.includes(marker)) {
+              newBody = body.replace(/### Jira Ticket Details[\s\S]*/m, jiraData);
+            } else {
+              newBody = body + "\n\n" + jiraData;
+            }
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              body: newBody
+            });
+
+            console.log(" PR updated with Jira details");
