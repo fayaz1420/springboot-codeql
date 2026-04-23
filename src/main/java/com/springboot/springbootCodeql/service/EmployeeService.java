@@ -46,7 +46,6 @@ public class EmployeeService {
         return repository.save(existing);
     }
 
-    // search for employees in the system based on their name or department
     public void delete(Long id) {
         repository.deleteById(id);
     }
